@@ -20,13 +20,11 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
-      # TODO 01 - Add a step to run tests - COMPLETED
       - name: Run tests
-        run: go test ./... # Added command to run tests
+        run: go test ./...
 
   compile:
-    # TODO 02 - Make sure that the `test` job is run before `compile` - COMPLETED
-    needs: test # Added dependency
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -41,4 +39,51 @@ jobs:
         run: go mod download
 
       - name: Compile binary
-        run: go build -o myapp
+        run: go build -o myapp # Assuming your Dockerfile might use this 'myapp' binary
+
+  # --- NEW JOB ADDED BELOW ---
+  build:
+    # Specify the OS for the runner
+    runs-on: ubuntu-latest
+
+    # Grant write permissions to access repository contents and GitHub Container Registry
+    permissions:
+      contents: read # Read access to repo contents is usually sufficient for checkout
+      packages: write # Write access is needed to push packages (Docker images) to GHCR
+
+    # Run this job only after the 'compile' job completes successfully
+    needs: compile
+    # if: success() # This is implied by 'needs' and usually not required unless you have more complex logic
+
+    steps:
+      # Step 1: Checkout the repository code
+      # Needed again because each job runs on a fresh runner instance
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up the Go environment (Go 1.22)
+      # Note: This might be optional depending on your Dockerfile.
+      # If your Dockerfile builds the Go app inside, you might not need Go here.
+      # If your Dockerfile copies the pre-compiled binary from the 'compile' job (using artifacts), you wouldn't need Go here.
+      # But if the build context needs Go tools, keep it. Included here as per the exercise snippet.
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      # Step 3: Log in to GitHub Container Registry (GHCR) using GitHub Actions token
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}             # GitHub username (actor triggering the workflow)
+          password: ${{ secrets.GITHUB_TOKEN }}     # Automatically provided GitHub token
+
+      # Step 4: Build the Docker image and tag it (ensuring lowercase)
+      # IMPORTANT: Using lower() function to avoid issues with uppercase letters in repo/owner name
+      - name: Build Docker image
+        run: docker build -t ghcr.io/${{ lower(github.repository) }}:latest .
+
+      # Step 5: Push the Docker image to GitHub Container Registry (using lowercase tag)
+      - name: Push Docker image
+        run: docker push ghcr.io/${{ lower(github.repository) }}:latest
