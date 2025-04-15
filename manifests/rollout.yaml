@@ -2,16 +2,20 @@ apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
   name: go-simple-webserver
+  # namespace: default # Optional: Explicitly define namespace if not relying on context/Argo CD destination
   labels:
     app: go-simple-webserver
 spec:
   replicas: 10
   strategy:
     canary:
+      # Modified steps for 25% -> 75% -> 100% rollout
       steps:
-        - setWeight: 50
-        - pause: { duration: 60s }
-        - setWeight: 100
+        - setWeight: 25          # Step 1: Send 25% traffic to canary
+        - pause: { duration: 120s } # Step 2: Wait for 120 seconds
+        - setWeight: 75          # Step 3: Send 75% traffic to canary
+        - pause: { duration: 120s } # Step 4: Wait for 120 seconds
+        # After the last pause, Rollouts automatically promotes to 100% if healthy
   selector:
     matchLabels:
       app: go-simple-webserver
@@ -19,10 +23,15 @@ spec:
     metadata:
       labels:
         app: go-simple-webserver
+        # Optional: Add/change a label/annotation here as another way to trigger update if image tag doesn't change
+        # version: v1.1
     spec:
       containers:
         - name: webserver
+          # Ensuring image tag is 'latest' as per instruction to force update check
+          # NOTE: If the image digest for 'latest' hasn't changed, Rollouts might not detect a change.
+          # Using unique tags (like Git SHA) is recommended for reliable updates.
           image: ghcr.io/mariusprd/ci_cd_lab:latest
           ports:
             - containerPort: 8080
-          imagePullPolicy: Always
+          imagePullPolicy: Always # Ensures Kubelet tries to pull even if tag is 'latest'
