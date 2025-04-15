@@ -82,8 +82,8 @@ jobs:
       # Step 4: Build the Docker image and tag it (ensuring lowercase)
       # IMPORTANT: Using lower() function to avoid issues with uppercase letters in repo/owner name
       - name: Build Docker image
-        run: docker build -t ghcr.io/${{ lower(github.repository) }}:latest .
+        run: docker build -t ghcr.io/${{ toLower(github.repository) }}:latest .
 
       # Step 5: Push the Docker image to GitHub Container Registry (using lowercase tag)
       - name: Push Docker image
-        run: docker push ghcr.io/${{ lower(github.repository) }}:latest
+        run: docker push ghcr.io/${{ toLower(github.repository) }}:latest
