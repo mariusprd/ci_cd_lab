@@ -26,7 +26,7 @@ jobs:
 
   compile:
     # TODO 02 - Make sure that the `test` job is run before `compile` - COMPLETED
-    needs: test # Added dependency: this job runs only if 'test' succeeds
+    needs: test # Added dependency
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
